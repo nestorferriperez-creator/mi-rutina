@@ -249,7 +249,6 @@ function TrackerPage() {
   const today = new Date();
   const todayKey = dk(today.getFullYear(), today.getMonth(), today.getDate());
 
-  // Load from persistent storage on mount
   useEffect(() => {
     storageGet("tracker_data").then(val => {
       if (val) setData(val);
@@ -257,7 +256,6 @@ function TrackerPage() {
     });
   }, []);
 
-  // Save to persistent storage on every data change (after initial load)
   useEffect(() => {
     if (!loaded) return;
     setSaving(true);
@@ -626,11 +624,9 @@ function EstudioPage() {
   useEffect(() => {
     storageGet("estudio_data").then(val => {
       if (!val) { setBlocks(STUDY_INITIAL); return; }
-      // Merge: keep progress from storage, but add any new blocks from STUDY_INITIAL
       const merged = STUDY_INITIAL.map(defaultBlock => {
         const stored = val.find(b => b.id === defaultBlock.id);
         if (!stored) return defaultBlock;
-        // Merge items: keep done state from storage, add new items from default
         const mergedItems = defaultBlock.items.map(defaultItem => {
           const storedItem = stored.items.find(i => i.id === defaultItem.id);
           return storedItem ? storedItem : defaultItem;
@@ -650,7 +646,6 @@ function EstudioPage() {
     setBlocks(prev => prev.map(b => {
       if (b.id !== blockId) return b;
       const updatedItems = b.items.map(i => i.id === itemId ? {...i, done:!i.done} : i);
-      // If all done, remove block after short delay via filter
       return {...b, items: updatedItems};
     }));
   }
@@ -701,7 +696,7 @@ export default function App() {
   const [page, setPage] = useState("schedule");
   return (
     <div style={{ background:"#0a0a0f", minHeight:"100vh", padding:"32px 20px", fontFamily:"'DM Sans',system-ui,sans-serif", color:"#e8e8f0" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap'); * { box-sizing:border-box; } textarea,input { color-scheme: dark; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap'); * { box-sizing:border-box; } textarea,input { color-scheme: dark; } body { background:#0a0a0f; margin:0; }`}</style>
       <div style={{ maxWidth:680, margin:"0 auto" }}>
         <NavBar page={page} setPage={setPage}/>
         {page==="schedule" && <SchedulePage/>}
