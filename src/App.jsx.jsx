@@ -81,6 +81,50 @@ const SESSIONS_INITIAL = [
       { icon:"🎾", title:"Energía Godó en la sesión nocturna", desc:"Entra a la sesión de noche con la energía que sentiste en el Godó: alegría, ilusión, ganas de pasártelo bien. No como una obligación — como algo que disfrutas." },
       { icon:"🚿", title:"Ritual de cierre nocturno", desc:"Al terminar la sesión de las 23:00, ducha de agua caliente como rutina de desconexión. Señaliza al cuerpo y a la mente que el día de juego ha terminado." },
     ],
+    reflections: [
+      {
+        id: "r1-1",
+        type: "doubt",
+        icon: "🤔",
+        text: "¿Cómo diferenciar entre analizar una mano en caliente (malo) y mantener la atención táctica durante el juego (necesario)? La línea entre 'procesar' y 'rumiar' no está del todo clara para mí.",
+        resolved: false,
+      },
+      {
+        id: "r1-2",
+        type: "doubt",
+        icon: "🤔",
+        text: "El SIT OUT emocional: ¿cuánto tiempo es suficiente? ¿5 minutos? ¿Hasta que sienta que he 'reseteado'? Necesito un criterio más concreto para saber cuándo volver.",
+        resolved: false,
+      },
+      {
+        id: "r1-3",
+        type: "insight",
+        icon: "💡",
+        text: "La idea de 'la competición como ciencia del fracaso' encaja muy bien con lo que pasa en el póker: el resultado de una mano no valida la decisión. Tengo que explorar cómo aplicar esto cuando cargo con una mala sesión varios días seguidos.",
+        resolved: false,
+      },
+      {
+        id: "r1-4",
+        type: "doubt",
+        icon: "🤔",
+        text: "La frase ancla 'vamos a por la siguiente mano' — ¿funciona igual de bien cuando estás en tilt severo que cuando es frustración leve? ¿Hay niveles de intervención distintos según la intensidad emocional?",
+        resolved: false,
+      },
+      {
+        id: "r1-5",
+        type: "improvement",
+        icon: "🔧",
+        text: "No tenemos ningún protocolo para cuando se acumula fatiga decisional al final de la sesión de las 23:00. A esa hora llevo 6h jugando — probablemente necesito una señal de salida más clara que simplemente 'llegó la hora'.",
+        resolved: false,
+      },
+      {
+        id: "r1-6",
+        type: "insight",
+        icon: "💡",
+        text: "Me llama la atención que el ritual de cierre nocturno (ducha caliente) exista, pero no hay un ritual de apertura para la sesión de las 16:00. Si el arranque de las 20:00 necesita un ritual, ¿por qué la tarde no?",
+        resolved: false,
+      },
+    ],
   }
 ];
 
@@ -96,22 +140,15 @@ function getMonths() {
   return months;
 }
 
-// ── STORAGE HELPERS ──
 async function storageGet(key) {
   try {
-    const { data } = await supabase
-      .from('storage_kv')
-      .select('value')
-      .eq('key', key)
-      .single();
+    const { data } = await supabase.from('storage_kv').select('value').eq('key', key).single();
     return data ? JSON.parse(data.value) : null;
   } catch { return null; }
 }
 async function storageSet(key, value) {
   try {
-    await supabase
-      .from('storage_kv')
-      .upsert({ key, value: JSON.stringify(value), updated_at: new Date() });
+    await supabase.from('storage_kv').upsert({ key, value: JSON.stringify(value), updated_at: new Date() });
   } catch {}
 }
 
@@ -122,17 +159,18 @@ function NavBar({ page, setPage }) {
     { id:"tracker",  label:"Tracker", emoji:"📊" },
     { id:"sessions", label:"Enhamed", emoji:"🧬" },
     { id:"estudio",  label:"Estudio", emoji:"📚" },
+    { id:"notas",    label:"Notas", emoji:"📝" },
   ];
   return (
-    <div style={{ display:"flex", gap:4, marginBottom:36, background:"#111118", borderRadius:14, padding:5, border:"1px solid #1e1e2e" }}>
+    <div style={{ display:"flex", gap:3, marginBottom:36, background:"#111118", borderRadius:14, padding:5, border:"1px solid #1e1e2e", overflowX:"auto" }}>
       {tabs.map(t => (
         <button key={t.id} onClick={() => setPage(t.id)} style={{
-          flex:1, padding:"10px 8px", borderRadius:10, border:"none", cursor:"pointer",
+          flex:1, padding:"10px 6px", borderRadius:10, border:"none", cursor:"pointer",
           background: page===t.id ? "#1e1e3a" : "transparent",
           color: page===t.id ? "#e8e8f0" : "#5a5a7a",
-          fontSize:13, fontWeight:500, fontFamily:"inherit",
-          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
-          transition:"all .15s",
+          fontSize:12, fontWeight:500, fontFamily:"inherit",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:5,
+          transition:"all .15s", whiteSpace:"nowrap", minWidth:0,
           borderBottom: page===t.id ? "2px solid #47c4ff" : "2px solid transparent",
         }}>
           <span>{t.emoji}</span><span>{t.label}</span>
@@ -344,13 +382,169 @@ function TrackerPage() {
   );
 }
 
-// ── SESSIONS ──
+// ── REFLECTIONS PANEL ──
+const REFLECTION_TYPES = {
+  doubt:      { label:"Duda", color:"#ffb347", bg:"rgba(255,179,71,.08)", border:"rgba(255,179,71,.2)" },
+  insight:    { label:"Insight", color:"#47c4ff", bg:"rgba(71,196,255,.08)", border:"rgba(71,196,255,.2)" },
+  improvement:{ label:"Mejora", color:"#c47fff", bg:"rgba(196,127,255,.08)", border:"rgba(196,127,255,.2)" },
+};
+
+function ReflectionsPanel({ reflections, onUpdate }) {
+  const [open, setOpen] = useState(true);
+  const [addingNew, setAddingNew] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [newType, setNewType] = useState("doubt");
+
+  const pending = reflections.filter(r => !r.resolved);
+  const resolved = reflections.filter(r => r.resolved);
+
+  function toggleResolved(id) {
+    onUpdate(reflections.map(r => r.id === id ? {...r, resolved:!r.resolved} : r));
+  }
+
+  function addReflection() {
+    if (!newText.trim()) return;
+    const typeIcons = { doubt:"🤔", insight:"💡", improvement:"🔧" };
+    const newRef = {
+      id: `r-${Date.now()}`,
+      type: newType,
+      icon: typeIcons[newType],
+      text: newText.trim(),
+      resolved: false,
+    };
+    onUpdate([...reflections, newRef]);
+    setNewText("");
+    setAddingNew(false);
+  }
+
+  function deleteReflection(id) {
+    onUpdate(reflections.filter(r => r.id !== id));
+  }
+
+  return (
+    <div style={{ marginTop:24 }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", marginBottom: open ? 12 : 0 }}
+      >
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:28, height:28, borderRadius:8, background:"rgba(255,179,71,.15)", border:"1px solid rgba(255,179,71,.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>💭</div>
+          <div>
+            <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#ffb347" }}>Reflexiones & Dudas</div>
+            <div style={{ fontSize:11, color:"#5a5a7a", marginTop:1 }}>{pending.length} pendientes · {resolved.length} resueltas</div>
+          </div>
+        </div>
+        <span style={{ fontSize:11, color:"#5a5a7a", transform:open?"rotate(180deg)":"none", transition:"transform .2s" }}>▼</span>
+      </div>
+
+      <div style={{ maxHeight:open?3000:0, overflow:"hidden", transition:"max-height .5s ease" }}>
+        <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+          {Object.entries(REFLECTION_TYPES).map(([type, meta]) => {
+            const count = reflections.filter(r => r.type === type && !r.resolved).length;
+            return (
+              <div key={type} style={{ display:"flex", alignItems:"center", gap:5, fontSize:10, letterSpacing:1, textTransform:"uppercase", padding:"3px 10px", borderRadius:100, background:meta.bg, border:`1px solid ${meta.border}`, color:meta.color }}>
+                {meta.label} <span style={{ fontWeight:700 }}>{count}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {pending.map(r => {
+          const meta = REFLECTION_TYPES[r.type] || REFLECTION_TYPES.doubt;
+          return (
+            <div key={r.id} style={{ display:"flex", gap:10, padding:"12px 14px", background:meta.bg, border:`1px solid ${meta.border}`, borderRadius:10, marginBottom:7, alignItems:"flex-start" }}>
+              <span style={{ fontSize:18, flexShrink:0, marginTop:1 }}>{r.icon}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                  <span style={{ fontSize:10, letterSpacing:1.5, textTransform:"uppercase", color:meta.color, fontWeight:600 }}>{meta.label}</span>
+                </div>
+                <div style={{ fontSize:13, color:"#c0c0d8", lineHeight:1.7 }}>{r.text}</div>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:5, flexShrink:0 }}>
+                <button
+                  onClick={() => toggleResolved(r.id)}
+                  title="Marcar como resuelta"
+                  style={{ width:28, height:28, borderRadius:7, border:"1px solid rgba(71,255,154,.3)", background:"rgba(71,255,154,.1)", color:"#47ff9a", cursor:"pointer", fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}
+                >✓</button>
+                <button
+                  onClick={() => deleteReflection(r.id)}
+                  title="Eliminar"
+                  style={{ width:28, height:28, borderRadius:7, border:"1px solid rgba(255,107,107,.2)", background:"transparent", color:"#ff6b6b", cursor:"pointer", fontSize:12, display:"flex", alignItems:"center", justifyContent:"center" }}
+                >✕</button>
+              </div>
+            </div>
+          );
+        })}
+
+        {resolved.length > 0 && (
+          <details style={{ marginTop:8 }}>
+            <summary style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", cursor:"pointer", marginBottom:8, listStyle:"none", display:"flex", alignItems:"center", gap:6 }}>
+              <span>▶</span> {resolved.length} resuelta{resolved.length>1?"s":""}
+            </summary>
+            {resolved.map(r => {
+              const meta = REFLECTION_TYPES[r.type] || REFLECTION_TYPES.doubt;
+              return (
+                <div key={r.id} style={{ display:"flex", gap:10, padding:"10px 14px", background:"rgba(255,255,255,.02)", border:"1px solid #1e1e2e", borderRadius:10, marginBottom:6, alignItems:"flex-start", opacity:.6 }}>
+                  <span style={{ fontSize:16, flexShrink:0 }}>✅</span>
+                  <div style={{ flex:1, fontSize:12, color:"#5a5a7a", textDecoration:"line-through", lineHeight:1.5 }}>{r.text}</div>
+                  <button onClick={() => toggleResolved(r.id)} style={{ fontSize:10, color:"#5a5a7a", background:"transparent", border:"1px solid #2e2e4e", borderRadius:6, padding:"3px 7px", cursor:"pointer" }}>↩</button>
+                </div>
+              );
+            })}
+          </details>
+        )}
+
+        {!addingNew ? (
+          <button
+            onClick={() => setAddingNew(true)}
+            style={{ marginTop:10, width:"100%", padding:"10px", borderRadius:10, border:"1px dashed rgba(255,179,71,.3)", background:"rgba(255,179,71,.04)", color:"rgba(255,179,71,.7)", cursor:"pointer", fontSize:12, fontFamily:"inherit", letterSpacing:1 }}
+          >+ Añadir reflexión o duda</button>
+        ) : (
+          <div style={{ marginTop:10, padding:"14px", background:"rgba(255,179,71,.06)", border:"1px solid rgba(255,179,71,.2)", borderRadius:12 }}>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {Object.entries(REFLECTION_TYPES).map(([type, meta]) => (
+                <button
+                  key={type}
+                  onClick={() => setNewType(type)}
+                  style={{ flex:1, padding:"6px 8px", borderRadius:8, border:`1px solid ${newType===type ? meta.color : "#2e2e4e"}`, background: newType===type ? meta.bg : "transparent", color: newType===type ? meta.color : "#5a5a7a", cursor:"pointer", fontSize:11, fontFamily:"inherit", letterSpacing:.5 }}
+                >
+                  {meta.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={newText}
+              onChange={e => setNewText(e.target.value)}
+              placeholder="Escribe tu duda, insight o idea de mejora..."
+              rows={3}
+              style={{ width:"100%", background:"#111118", border:"1px solid #2e2e4e", borderRadius:8, padding:"8px 12px", color:"#e8e8f0", fontSize:13, fontFamily:"inherit", outline:"none", resize:"vertical" }}
+            />
+            <div style={{ display:"flex", gap:8, marginTop:8 }}>
+              <button onClick={addReflection} style={{ padding:"8px 16px", borderRadius:8, border:"none", background:"#ffb347", color:"#0a0a0f", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit" }}>Guardar</button>
+              <button onClick={() => {setAddingNew(false);setNewText("");}} style={{ padding:"8px 14px", borderRadius:8, border:"1px solid #3a3a5a", background:"transparent", color:"#5a5a7a", cursor:"pointer", fontSize:12, fontFamily:"inherit" }}>Cancelar</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── SESSION CARD ──
 function SessionCard({ session, index, onUpdate }) {
   const [open, setOpen] = useState(index === 0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(session);
 
   function save() { onUpdate(draft); setEditing(false); }
+
+  function updateReflections(newReflections) {
+    const updated = {...session, reflections: newReflections};
+    onUpdate(updated);
+  }
+
+  const reflections = session.reflections || [];
+  const pendingCount = reflections.filter(r => !r.resolved).length;
 
   return (
     <div style={{ border:"1px solid #1e1e2e", borderRadius:14, overflow:"hidden", marginBottom:8, transition:"border-color .2s", borderColor: open ? "#47c4ff" : "#1e1e2e" }}>
@@ -360,12 +554,19 @@ function SessionCard({ session, index, onUpdate }) {
         </div>
         <div style={{ flex:1 }}>
           <div style={{ fontWeight:500, fontSize:15, color:"#e8e8f0" }}>{session.title || `Sesión ${index+1}`}</div>
-          {session.date && <div style={{ fontSize:11, color:"#5a5a7a", marginTop:3, letterSpacing:1 }}>{session.date}</div>}
+          <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:3, flexWrap:"wrap" }}>
+            {session.date && <div style={{ fontSize:11, color:"#5a5a7a", letterSpacing:1 }}>{session.date}</div>}
+            {pendingCount > 0 && (
+              <div style={{ fontSize:10, padding:"1px 7px", borderRadius:100, background:"rgba(255,179,71,.15)", border:"1px solid rgba(255,179,71,.3)", color:"#ffb347", letterSpacing:.5 }}>
+                💭 {pendingCount} pendiente{pendingCount>1?"s":""}
+              </div>
+            )}
+          </div>
         </div>
         <span style={{ fontSize:11, color:"#5a5a7a", transform:open?"rotate(180deg)":"none", transition:"transform .2s" }}>▼</span>
       </div>
 
-      <div style={{ maxHeight:open?3000:0, overflow:"hidden", transition:"max-height .4s ease" }}>
+      <div style={{ maxHeight:open?6000:0, overflow:"hidden", transition:"max-height .4s ease" }}>
         <div style={{ padding:"0 20px 20px", borderTop:"1px solid #1e1e2e", paddingTop:16, background:"#0e0e1a" }}>
           {!editing ? (
             <div>
@@ -412,6 +613,12 @@ function SessionCard({ session, index, onUpdate }) {
               {!session.summary && !session.commitment && !session.protocols && (
                 <div style={{ textAlign:"center", padding:"20px 0", color:"#5a5a7a", fontSize:13 }}>Sin rellenar todavía</div>
               )}
+
+              {/* REFLECTIONS */}
+              <div style={{ borderTop:"1px solid #1e1e2e", marginTop:20, paddingTop:4 }}>
+                <ReflectionsPanel reflections={reflections} onUpdate={updateReflections} />
+              </div>
+
               <button onClick={()=>{setDraft(session);setEditing(true);}} style={{ marginTop:16, padding:"8px 16px", borderRadius:8, border:"1px solid #3a3a5a", background:"transparent", color:"#a0a0c0", cursor:"pointer", fontSize:12, letterSpacing:1 }}>
                 ✏️ Editar sesión
               </button>
@@ -458,7 +665,15 @@ function SessionsPage() {
 
   useEffect(() => {
     storageGet("sessions_data").then(val => {
-      setSessions(val || SESSIONS_INITIAL);
+      if (!val) { setSessions(SESSIONS_INITIAL); return; }
+      // Merge initial reflections for session 1 if missing
+      const merged = val.map((s, i) => {
+        if (i === 0 && (!s.reflections || s.reflections.length === 0)) {
+          return {...s, reflections: SESSIONS_INITIAL[0].reflections};
+        }
+        return s;
+      });
+      setSessions(merged);
     });
   }, []);
 
@@ -474,10 +689,12 @@ function SessionsPage() {
     setSessions(prev => prev.map((s,i) => i===index ? updated : s));
   }
   function addSession() {
-    setSessions(prev => [...prev, { id:prev.length+1, date:"", title:`Sesión ${prev.length+1}`, summary:"", keyPoints:["","",""], commitment:"" }]);
+    setSessions(prev => [...prev, { id:prev.length+1, date:"", title:`Sesión ${prev.length+1}`, summary:"", keyPoints:["","",""], commitment:"", protocols:[], reflections:[] }]);
   }
 
   if (!sessions) return <div style={{ textAlign:"center", padding:"60px 0", color:"#5a5a7a", fontSize:13, letterSpacing:2 }}>Cargando sesiones...</div>;
+
+  const totalPending = sessions.reduce((acc, s) => acc + (s.reflections||[]).filter(r=>!r.resolved).length, 0);
 
   return (
     <div>
@@ -494,17 +711,21 @@ function SessionsPage() {
       </div>
 
       <div style={{ display:"flex", gap:16, marginBottom:28, flexWrap:"wrap" }}>
-        <div style={{ flex:1, minWidth:100, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
+        <div style={{ flex:1, minWidth:80, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:"#47c4ff" }}>{sessions.length}</div>
           <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginTop:2 }}>Sesiones</div>
         </div>
-        <div style={{ flex:1, minWidth:100, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
+        <div style={{ flex:1, minWidth:80, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:"#e8ff47" }}>{sessions.filter(s=>s.summary).length}</div>
           <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginTop:2 }}>Completadas</div>
         </div>
-        <div style={{ flex:1, minWidth:100, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
+        <div style={{ flex:1, minWidth:80, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:"#ffb347" }}>{totalPending}</div>
+          <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginTop:2 }}>Dudas abiertas</div>
+        </div>
+        <div style={{ flex:1, minWidth:80, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:"#ff6b6b" }}>{sessions.filter(s=>s.commitment).length}</div>
-          <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginTop:2 }}>Con compromiso</div>
+          <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginTop:2 }}>Compromisos</div>
         </div>
         {saving && <div style={{ width:"100%", textAlign:"right", fontSize:10, color:"#47c4ff", letterSpacing:1 }}>guardando…</div>}
       </div>
@@ -661,9 +882,7 @@ function EstudioPage() {
     <div>
       <div style={{ marginBottom:32 }}>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(28px,6vw,44px)", letterSpacing:4, color:"#e8ff47" }}>Pendiente de Estudio</div>
-        <div style={{ color:"#5a5a7a", fontSize:13, letterSpacing:2, textTransform:"uppercase", marginTop:6 }}></div>
       </div>
-
       <div style={{ display:"flex", gap:12, marginBottom:28 }}>
         <div style={{ flex:1, padding:"14px 16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:12, textAlign:"center" }}>
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:"#e8ff47" }}>{totalItems - doneItems}</div>
@@ -678,9 +897,7 @@ function EstudioPage() {
           <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginTop:2 }}>Progreso</div>
         </div>
       </div>
-
       {pending.map(b => <StudyBlock key={b.id} block={b} onToggle={handleToggle}/>)}
-
       {completed.length > 0 && (
         <div style={{ marginTop:24 }}>
           <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginBottom:12 }}>✅ Completados</div>
@@ -691,18 +908,149 @@ function EstudioPage() {
   );
 }
 
+// ── NOTAS RÁPIDAS ──
+function NotasPage() {
+  const [notes, setNotes] = useState(null);
+  const [input, setInput] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [saving, setSaving] = useState(false);
+
+  const NOTE_TAGS = [
+    { id:"juego", label:"Juego", color:"#ff6b6b", emoji:"🃏" },
+    { id:"mental", label:"Mental", color:"#47c4ff", emoji:"🧠" },
+    { id:"rutina", label:"Rutina", color:"#e8ff47", emoji:"📅" },
+    { id:"general", label:"General", color:"#a0a0c0", emoji:"📌" },
+  ];
+
+  const [selectedTag, setSelectedTag] = useState("general");
+
+  useEffect(() => {
+    storageGet("notas_data").then(val => {
+      setNotes(val || []);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (notes === null) return;
+    setSaving(true);
+    storageSet("notas_data", notes).then(() => setTimeout(() => setSaving(false), 600));
+  }, [notes]);
+
+  function addNote() {
+    if (!input.trim()) return;
+    const note = { id: Date.now(), text: input.trim(), tag: selectedTag, date: new Date().toLocaleDateString("es-ES"), pinned: false };
+    setNotes(prev => [note, ...prev]);
+    setInput("");
+  }
+
+  function deleteNote(id) { setNotes(prev => prev.filter(n => n.id !== id)); }
+  function togglePin(id) { setNotes(prev => prev.map(n => n.id===id ? {...n, pinned:!n.pinned} : n)); }
+
+  if (!notes) return <div style={{ textAlign:"center", padding:"60px 0", color:"#5a5a7a", fontSize:13, letterSpacing:2 }}>Cargando notas...</div>;
+
+  const filtered = filter === "all" ? notes : notes.filter(n => n.tag === filter);
+  const pinned = filtered.filter(n => n.pinned);
+  const unpinned = filtered.filter(n => !n.pinned);
+
+  return (
+    <div>
+      <div style={{ marginBottom:32 }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(28px,6vw,44px)", letterSpacing:4, color:"#e8ff47" }}>📝 Notas Rápidas</div>
+        <div style={{ color:"#5a5a7a", fontSize:13, letterSpacing:2, textTransform:"uppercase", marginTop:6 }}>Captura ideas · observaciones · pensamientos</div>
+      </div>
+
+      {/* Input */}
+      <div style={{ padding:"16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:14, marginBottom:20 }}>
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if(e.key==="Enter" && e.metaKey) addNote(); }}
+          placeholder="Escribe una nota... (⌘+Enter para guardar)"
+          rows={3}
+          style={{ width:"100%", background:"transparent", border:"none", color:"#e8e8f0", fontSize:14, fontFamily:"inherit", outline:"none", resize:"none", lineHeight:1.7 }}
+        />
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, gap:8, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:6 }}>
+            {NOTE_TAGS.map(t => (
+              <button key={t.id} onClick={() => setSelectedTag(t.id)} style={{ padding:"4px 10px", borderRadius:100, border:`1px solid ${selectedTag===t.id ? t.color : "#2e2e4e"}`, background: selectedTag===t.id ? `rgba(${t.color},0.1)` : "transparent", color: selectedTag===t.id ? t.color : "#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
+                {t.emoji} {t.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={addNote} style={{ padding:"8px 18px", borderRadius:9, border:"none", background:"#e8ff47", color:"#0a0a0f", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+            Guardar
+          </button>
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto" }}>
+        <button onClick={() => setFilter("all")} style={{ padding:"5px 12px", borderRadius:100, border:`1px solid ${filter==="all"?"#47c4ff":"#2e2e4e"}`, background:filter==="all"?"rgba(71,196,255,.1)":"transparent", color:filter==="all"?"#47c4ff":"#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+          Todas ({notes.length})
+        </button>
+        {NOTE_TAGS.map(t => {
+          const count = notes.filter(n => n.tag===t.id).length;
+          return (
+            <button key={t.id} onClick={() => setFilter(t.id)} style={{ padding:"5px 12px", borderRadius:100, border:`1px solid ${filter===t.id ? t.color : "#2e2e4e"}`, background:filter===t.id?`rgba(255,255,255,.05)`:"transparent", color:filter===t.id?t.color:"#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+              {t.emoji} {t.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Notes list */}
+      {notes.length === 0 && (
+        <div style={{ textAlign:"center", padding:"40px 0", color:"#5a5a7a", fontSize:13 }}>Sin notas todavía. ¡Empieza a capturar ideas!</div>
+      )}
+
+      {pinned.length > 0 && (
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginBottom:8 }}>📌 Fijadas</div>
+          {pinned.map(note => <NoteCard key={note.id} note={note} tags={NOTE_TAGS} onDelete={deleteNote} onPin={togglePin}/>)}
+        </div>
+      )}
+
+      {unpinned.map(note => <NoteCard key={note.id} note={note} tags={NOTE_TAGS} onDelete={deleteNote} onPin={togglePin}/>)}
+
+      {saving && <div style={{ textAlign:"right", fontSize:10, color:"#47c4ff", letterSpacing:1, marginTop:8 }}>guardando…</div>}
+    </div>
+  );
+}
+
+function NoteCard({ note, tags, onDelete, onPin }) {
+  const tagMeta = tags.find(t => t.id === note.tag) || tags[3];
+  return (
+    <div style={{ padding:"14px 16px", background:"#111118", border:`1px solid ${note.pinned?"rgba(232,255,71,.2)":"#1e1e2e"}`, borderRadius:12, marginBottom:7, position:"relative" }}>
+      <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:14, color:"#c0c0d8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{note.text}</div>
+          <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:8 }}>
+            <span style={{ fontSize:10, padding:"2px 8px", borderRadius:100, border:`1px solid rgba(255,255,255,.1)`, color:tagMeta.color, letterSpacing:.5 }}>{tagMeta.emoji} {tagMeta.label}</span>
+            <span style={{ fontSize:10, color:"#5a5a7a" }}>{note.date}</span>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+          <button onClick={() => onPin(note.id)} title={note.pinned?"Desfijar":"Fijar"} style={{ width:28, height:28, borderRadius:7, border:`1px solid ${note.pinned?"rgba(232,255,71,.4)":"#2e2e4e"}`, background: note.pinned?"rgba(232,255,71,.1)":"transparent", color:note.pinned?"#e8ff47":"#5a5a7a", cursor:"pointer", fontSize:13 }}>📌</button>
+          <button onClick={() => onDelete(note.id)} style={{ width:28, height:28, borderRadius:7, border:"1px solid rgba(255,107,107,.2)", background:"transparent", color:"#ff6b6b", cursor:"pointer", fontSize:13 }}>✕</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── APP ──
 export default function App() {
   const [page, setPage] = useState("schedule");
   return (
     <div style={{ background:"#0a0a0f", minHeight:"100vh", padding:"32px 20px", fontFamily:"'DM Sans',system-ui,sans-serif", color:"#e8e8f0" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap'); * { box-sizing:border-box; } textarea,input { color-scheme: dark; } body { background:#0a0a0f; margin:0; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap'); * { box-sizing:border-box; } textarea,input { color-scheme: dark; } body { background:#0a0a0f; margin:0; } details summary::-webkit-details-marker { display:none; }`}</style>
       <div style={{ maxWidth:680, margin:"0 auto" }}>
         <NavBar page={page} setPage={setPage}/>
         {page==="schedule" && <SchedulePage/>}
         {page==="tracker"  && <TrackerPage/>}
         {page==="sessions" && <SessionsPage/>}
         {page==="estudio"  && <EstudioPage/>}
+        {page==="notas"    && <NotasPage/>}
         <div style={{ marginTop:44, textAlign:"center", color:"#5a5a7a", fontSize:11, letterSpacing:2, textTransform:"uppercase" }}>Rutina personal · cada día cuenta</div>
       </div>
     </div>
