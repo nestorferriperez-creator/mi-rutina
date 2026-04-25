@@ -277,6 +277,7 @@ function TrackerPage() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [popup, setPopup] = useState(null);
+  const [notes] = useNotes();
   const popupRef = useRef(null);
   const today = new Date();
   const todayKey = dk(today.getFullYear(), today.getMonth(), today.getDate());
@@ -291,9 +292,7 @@ function TrackerPage() {
   useEffect(() => {
     if (!loaded) return;
     setSaving(true);
-    storageSet("tracker_data", data).then(() => {
-      setTimeout(() => setSaving(false), 600);
-    });
+    storageSet("tracker_data", data).then(() => setTimeout(() => setSaving(false), 600));
   }, [data, loaded]);
 
   useEffect(() => {
@@ -304,7 +303,7 @@ function TrackerPage() {
   function handleClick(e, key) {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
-    setPopup({ key, top:r.bottom+8, left:Math.min(r.left, window.innerWidth-260) });
+    setPopup({ key, top:r.bottom+8, left:Math.min(r.left, window.innerWidth-300) });
   }
   function setSt(st) {
     setData(prev => { const n={...prev}; if(st) n[popup.key]=st; else delete n[popup.key]; return n; });
@@ -315,6 +314,7 @@ function TrackerPage() {
   const monthPct = (() => { const y=today.getFullYear(),m=today.getMonth(),d=today.getDate(),from=(y===START.getFullYear()&&m===START.getMonth())?START.getDate():1; let done=0,total=d-from+1; for(let i=from;i<=d;i++) if(data[dk(y,m,i)]) done++; return total>0?Math.round(done/total*100):0; })();
   const months = getMonths();
   const COLMAP = { green:{bg:"rgba(71,255,154,.15)",border:"rgba(71,255,154,.5)",text:"#47ff9a"}, yellow:{bg:"rgba(255,220,71,.15)",border:"rgba(255,220,71,.5)",text:"#ffdc47"}, orange:{bg:"rgba(255,140,50,.15)",border:"rgba(255,140,50,.5)",text:"#ff8c32"}, red:{bg:"rgba(255,107,107,.15)",border:"rgba(255,107,107,.5)",text:"#ff6b6b"} };
+  const notesForDay = (key) => (notes || []).filter(n => n.linkedDay === key);
 
   if (!loaded) return <div style={{ textAlign:"center", padding:"60px 0", color:"#5a5a7a", fontSize:13, letterSpacing:2 }}>Cargando tracker...</div>;
 
@@ -348,15 +348,17 @@ function TrackerPage() {
                 const isToday=key===todayKey;
                 const col=st?COLMAP[st]:null;
                 const isBeforeStart=new Date(yr,mn,d)<START;
+                const hasNotes=notesForDay(key).length>0;
                 if(isBeforeStart) return <div key={d} style={{ aspectRatio:"1" }}/>;
                 return (
                   <div key={d} onClick={(e)=>handleClick(e,key)}
-                    style={{ aspectRatio:"1", borderRadius:7, border:`1px solid ${isToday?"#47c4ff":col?col.border:"#1e1e2e"}`, background:col?col.bg:"#111118", boxShadow:isToday?"0 0 0 1px #47c4ff":"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, cursor:"pointer", transition:"transform .12s", minWidth:0 }}
+                    style={{ aspectRatio:"1", borderRadius:7, border:`1px solid ${isToday?"#47c4ff":col?col.border:"#1e1e2e"}`, background:col?col.bg:"#111118", boxShadow:isToday?"0 0 0 1px #47c4ff":"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, cursor:"pointer", transition:"transform .12s", minWidth:0, position:"relative" }}
                     onMouseEnter={e=>e.currentTarget.style.transform="scale(1.12)"}
                     onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
                   >
                     <div style={{ fontSize:9, color:col?col.text:"#5a5a7a", fontWeight:500, lineHeight:1 }}>{d}</div>
-                    <div style={{ fontSize:11, lineHeight:1 }}>{st?ICONS[st]:""}</div>
+                    <div style={{ fontSize:10, lineHeight:1 }}>{st?ICONS[st]:""}</div>
+                    {hasNotes && <div style={{ width:4, height:4, borderRadius:"50%", background:"#47c4ff", position:"absolute", bottom:3, right:3 }}/>}
                   </div>
                 );
               })}
@@ -365,11 +367,27 @@ function TrackerPage() {
         );
       })}
       {popup && (
-        <div ref={popupRef} style={{ position:"fixed", top:popup.top, left:popup.left, background:"#16162a", border:"1px solid #3a3a5a", borderRadius:14, padding:10, display:"flex", gap:7, zIndex:99999, boxShadow:"0 20px 60px rgba(0,0,0,.9)" }}>
-          {[["green","✅","rgba(71,255,154,.2)"],["yellow","🟡","rgba(255,220,71,.2)"],["orange","🟠","rgba(255,140,50,.2)"],["red","❌","rgba(255,107,107,.2)"]].map(([st,ic,bg])=>(
-            <button key={st} onClick={()=>setSt(st)} style={{ width:44, height:44, borderRadius:10, border:"none", cursor:"pointer", fontSize:22, background:bg, display:"flex", alignItems:"center", justifyContent:"center" }}>{ic}</button>
-          ))}
-          <button onClick={()=>setSt(null)} style={{ width:44, height:44, borderRadius:10, border:"none", cursor:"pointer", fontSize:14, color:"#888", background:"rgba(255,255,255,.06)" }}>✕</button>
+        <div ref={popupRef} style={{ position:"fixed", top:popup.top, left:Math.max(8, popup.left), background:"#16162a", border:"1px solid #3a3a5a", borderRadius:14, padding:12, zIndex:99999, boxShadow:"0 20px 60px rgba(0,0,0,.9)", width:300 }}>
+          <div style={{ display:"flex", gap:7, marginBottom: notesForDay(popup.key).length > 0 ? 10 : 0 }}>
+            {[["green","✅","rgba(71,255,154,.2)"],["yellow","🟡","rgba(255,220,71,.2)"],["orange","🟠","rgba(255,140,50,.2)"],["red","❌","rgba(255,107,107,.2)"]].map(([st,ic,bg])=>(
+              <button key={st} onClick={()=>setSt(st)} style={{ flex:1, height:44, borderRadius:10, border:"none", cursor:"pointer", fontSize:22, background:bg, display:"flex", alignItems:"center", justifyContent:"center" }}>{ic}</button>
+            ))}
+            <button onClick={()=>setSt(null)} style={{ width:36, height:44, borderRadius:10, border:"none", cursor:"pointer", fontSize:14, color:"#888", background:"rgba(255,255,255,.06)" }}>✕</button>
+          </div>
+          {notesForDay(popup.key).length > 0 && (
+            <div style={{ borderTop:"1px solid #2e2e4e", paddingTop:10 }}>
+              <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#47c4ff", marginBottom:8 }}>📝 Notas del día</div>
+              {notesForDay(popup.key).map(n => {
+                const tagMeta = NOTE_TAGS.find(t => t.id === n.tag) || NOTE_TAGS[3];
+                return (
+                  <div key={n.id} style={{ padding:"8px 10px", background:"rgba(71,196,255,.05)", border:"1px solid rgba(71,196,255,.15)", borderRadius:8, marginBottom:6 }}>
+                    <div style={{ fontSize:12, color:"#c0c0d8", lineHeight:1.6, whiteSpace:"pre-wrap" }}>{n.text}</div>
+                    <div style={{ fontSize:10, color:tagMeta.color, marginTop:4 }}>{tagMeta.emoji} {tagMeta.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -902,58 +920,144 @@ function EstudioPage() {
   );
 }
 
-// ── NOTAS RÁPIDAS ──
-function NotasPage() {
+// ── NOTAS ──
+const NOTE_TAGS = [
+  { id:"juego",   label:"Juego",   color:"#ff6b6b", emoji:"🃏" },
+  { id:"mental",  label:"Mental",  color:"#47c4ff", emoji:"🧠" },
+  { id:"rutina",  label:"Rutina",  color:"#e8ff47", emoji:"📅" },
+  { id:"general", label:"General", color:"#a0a0c0", emoji:"📌" },
+];
+
+// Shared loader so both Tracker and Notas can read notes
+function useNotes() {
   const [notes, setNotes] = useState(null);
+  useEffect(() => { storageGet("notas_data").then(val => setNotes(val || [])); }, []);
+  useEffect(() => { if (notes !== null) storageSet("notas_data", notes); }, [notes]);
+  return [notes, setNotes];
+}
+
+function NoteCard({ note, onDelete, onPin, onUpdate }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note.text);
+  const [draftDay, setDraftDay] = useState(note.linkedDay || "");
+  const [draftTag, setDraftTag] = useState(note.tag || "general");
+  const tagMeta = NOTE_TAGS.find(t => t.id === note.tag) || NOTE_TAGS[3];
+
+  function saveEdit() {
+    onUpdate({ ...note, text: draft.trim(), linkedDay: draftDay || null, tag: draftTag });
+    setEditing(false);
+  }
+
+  return (
+    <div style={{ background:"#111118", border:`1px solid ${note.pinned ? "rgba(232,255,71,.25)" : note.linkedDay ? "rgba(71,196,255,.2)" : "#1e1e2e"}`, borderRadius:12, marginBottom:8, overflow:"hidden" }}>
+      {!editing ? (
+        <div style={{ padding:"14px 16px" }}>
+          <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:14, color:"#c0c0d8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{note.text}</div>
+              <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:10, flexWrap:"wrap" }}>
+                <span style={{ fontSize:10, padding:"2px 8px", borderRadius:100, border:`1px solid rgba(255,255,255,.08)`, color:tagMeta.color }}>{tagMeta.emoji} {tagMeta.label}</span>
+                <span style={{ fontSize:10, color:"#5a5a7a" }}>{note.date}</span>
+                {note.linkedDay && (
+                  <span style={{ fontSize:10, padding:"2px 8px", borderRadius:100, border:"1px solid rgba(71,196,255,.3)", color:"#47c4ff", background:"rgba(71,196,255,.08)" }}>
+                    📅 {note.linkedDay.split("-").reverse().slice(0,2).join("/")}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+              <button onClick={() => { setDraft(note.text); setDraftDay(note.linkedDay||""); setDraftTag(note.tag||"general"); setEditing(true); }} style={{ width:28, height:28, borderRadius:7, border:"1px solid #2e2e4e", background:"transparent", color:"#5a5a7a", cursor:"pointer", fontSize:12 }}>✏️</button>
+              <button onClick={() => onPin(note.id)} style={{ width:28, height:28, borderRadius:7, border:`1px solid ${note.pinned?"rgba(232,255,71,.4)":"#2e2e4e"}`, background:note.pinned?"rgba(232,255,71,.1)":"transparent", color:note.pinned?"#e8ff47":"#5a5a7a", cursor:"pointer", fontSize:12 }}>📌</button>
+              <button onClick={() => onDelete(note.id)} style={{ width:28, height:28, borderRadius:7, border:"1px solid rgba(255,107,107,.2)", background:"transparent", color:"#ff6b6b", cursor:"pointer", fontSize:12 }}>✕</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding:"14px 16px", background:"#0e0e1a" }}>
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={4}
+            autoFocus
+            style={{ width:"100%", background:"#111118", border:"1px solid #2e2e4e", borderRadius:8, padding:"10px 12px", color:"#e8e8f0", fontSize:14, fontFamily:"inherit", outline:"none", resize:"vertical", lineHeight:1.7, marginBottom:10 }}
+          />
+          <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+            {NOTE_TAGS.map(t => (
+              <button key={t.id} onClick={() => setDraftTag(t.id)} style={{ padding:"4px 10px", borderRadius:100, border:`1px solid ${draftTag===t.id ? t.color : "#2e2e4e"}`, background:draftTag===t.id ? `${t.color}18` : "transparent", color:draftTag===t.id ? t.color : "#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                {t.emoji} {t.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", display:"block", marginBottom:6 }}>📅 Vincular a un día del tracker</label>
+            <input
+              type="date"
+              value={draftDay}
+              onChange={e => setDraftDay(e.target.value)}
+              style={{ background:"#111118", border:"1px solid #2e2e4e", borderRadius:8, padding:"7px 12px", color:"#e8e8f0", fontSize:13, fontFamily:"inherit", outline:"none", colorScheme:"dark" }}
+            />
+            {draftDay && <button onClick={() => setDraftDay("")} style={{ marginLeft:8, fontSize:11, color:"#5a5a7a", background:"transparent", border:"none", cursor:"pointer" }}>✕ quitar</button>}
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={saveEdit} style={{ padding:"8px 18px", borderRadius:8, border:"none", background:"#47c4ff", color:"#0a0a0f", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit" }}>Guardar</button>
+            <button onClick={() => setEditing(false)} style={{ padding:"8px 14px", borderRadius:8, border:"1px solid #3a3a5a", background:"transparent", color:"#5a5a7a", cursor:"pointer", fontSize:12, fontFamily:"inherit" }}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotasPage() {
+  const [notes, setNotes] = useNotes();
   const [input, setInput] = useState("");
   const [filter, setFilter] = useState("all");
+  const [filterDay, setFilterDay] = useState("");
+  const [selectedTag, setSelectedTag] = useState("general");
+  const [linkedDay, setLinkedDay] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const NOTE_TAGS = [
-    { id:"juego", label:"Juego", color:"#ff6b6b", emoji:"🃏" },
-    { id:"mental", label:"Mental", color:"#47c4ff", emoji:"🧠" },
-    { id:"rutina", label:"Rutina", color:"#e8ff47", emoji:"📅" },
-    { id:"general", label:"General", color:"#a0a0c0", emoji:"📌" },
-  ];
-
-  const [selectedTag, setSelectedTag] = useState("general");
-
-  useEffect(() => {
-    storageGet("notas_data").then(val => {
-      setNotes(val || []);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (notes === null) return;
-    setSaving(true);
-    storageSet("notas_data", notes).then(() => setTimeout(() => setSaving(false), 600));
-  }, [notes]);
+  useEffect(() => { if (notes !== null) { setSaving(true); setTimeout(() => setSaving(false), 600); } }, [notes]);
 
   function addNote() {
     if (!input.trim()) return;
-    const note = { id: Date.now(), text: input.trim(), tag: selectedTag, date: new Date().toLocaleDateString("es-ES"), pinned: false };
+    const today = new Date();
+    const note = {
+      id: Date.now(),
+      text: input.trim(),
+      tag: selectedTag,
+      date: today.toLocaleDateString("es-ES"),
+      linkedDay: linkedDay || null,
+      pinned: false,
+    };
     setNotes(prev => [note, ...prev]);
     setInput("");
+    setLinkedDay("");
   }
 
   function deleteNote(id) { setNotes(prev => prev.filter(n => n.id !== id)); }
   function togglePin(id) { setNotes(prev => prev.map(n => n.id===id ? {...n, pinned:!n.pinned} : n)); }
+  function updateNote(updated) { setNotes(prev => prev.map(n => n.id===updated.id ? updated : n)); }
 
-  if (!notes) return <div style={{ textAlign:"center", padding:"60px 0", color:"#5a5a7a", fontSize:13, letterSpacing:2 }}>Cargando notas...</div>;
+  if (!notes) return <div style={{ textAlign:"center", padding:"60px 0", color:"#5a5a7a", fontSize:13 }}>Cargando notas...</div>;
 
-  const filtered = filter === "all" ? notes : notes.filter(n => n.tag === filter);
+  let filtered = notes;
+  if (filter !== "all") filtered = filtered.filter(n => n.tag === filter);
+  if (filterDay) filtered = filtered.filter(n => n.linkedDay === filterDay);
   const pinned = filtered.filter(n => n.pinned);
   const unpinned = filtered.filter(n => !n.pinned);
 
+  // Days that have linked notes
+  const linkedDays = [...new Set(notes.filter(n => n.linkedDay).map(n => n.linkedDay))].sort().reverse();
+
   return (
     <div>
-      <div style={{ marginBottom:32 }}>
+      <div style={{ marginBottom:28 }}>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(28px,6vw,44px)", letterSpacing:4, color:"#e8ff47" }}>📝 Notas Rápidas</div>
         <div style={{ color:"#5a5a7a", fontSize:13, letterSpacing:2, textTransform:"uppercase", marginTop:6 }}>Captura ideas · observaciones · pensamientos</div>
       </div>
 
-      {/* Input */}
+      {/* Nueva nota */}
       <div style={{ padding:"16px", background:"#111118", border:"1px solid #1e1e2e", borderRadius:14, marginBottom:20 }}>
         <textarea
           value={input}
@@ -963,13 +1067,24 @@ function NotasPage() {
           rows={3}
           style={{ width:"100%", background:"transparent", border:"none", color:"#e8e8f0", fontSize:14, fontFamily:"inherit", outline:"none", resize:"none", lineHeight:1.7 }}
         />
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, gap:8, flexWrap:"wrap" }}>
-          <div style={{ display:"flex", gap:6 }}>
-            {NOTE_TAGS.map(t => (
-              <button key={t.id} onClick={() => setSelectedTag(t.id)} style={{ padding:"4px 10px", borderRadius:100, border:`1px solid ${selectedTag===t.id ? t.color : "#2e2e4e"}`, background: selectedTag===t.id ? `rgba(${t.color},0.1)` : "transparent", color: selectedTag===t.id ? t.color : "#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
-                {t.emoji} {t.label}
-              </button>
-            ))}
+        <div style={{ height:1, background:"#1e1e2e", margin:"10px 0" }}/>
+        <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+          {NOTE_TAGS.map(t => (
+            <button key={t.id} onClick={() => setSelectedTag(t.id)} style={{ padding:"4px 10px", borderRadius:100, border:`1px solid ${selectedTag===t.id ? t.color : "#2e2e4e"}`, background:selectedTag===t.id ? `${t.color}18` : "transparent", color:selectedTag===t.id ? t.color : "#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+              {t.emoji} {t.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:11, color:"#5a5a7a" }}>📅 Vincular día:</span>
+            <input
+              type="date"
+              value={linkedDay}
+              onChange={e => setLinkedDay(e.target.value)}
+              style={{ background:"#0e0e1a", border:"1px solid #2e2e4e", borderRadius:7, padding:"5px 10px", color: linkedDay ? "#47c4ff" : "#5a5a7a", fontSize:12, fontFamily:"inherit", outline:"none", colorScheme:"dark" }}
+            />
+            {linkedDay && <button onClick={() => setLinkedDay("")} style={{ fontSize:11, color:"#5a5a7a", background:"transparent", border:"none", cursor:"pointer" }}>✕</button>}
           </div>
           <button onClick={addNote} style={{ padding:"8px 18px", borderRadius:9, border:"none", background:"#e8ff47", color:"#0a0a0f", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
             Guardar
@@ -977,57 +1092,50 @@ function NotasPage() {
         </div>
       </div>
 
-      {/* Filter */}
-      <div style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto" }}>
-        <button onClick={() => setFilter("all")} style={{ padding:"5px 12px", borderRadius:100, border:`1px solid ${filter==="all"?"#47c4ff":"#2e2e4e"}`, background:filter==="all"?"rgba(71,196,255,.1)":"transparent", color:filter==="all"?"#47c4ff":"#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+      {/* Filtros */}
+      <div style={{ display:"flex", gap:6, marginBottom:8, overflowX:"auto", paddingBottom:2 }}>
+        <button onClick={() => { setFilter("all"); setFilterDay(""); }} style={{ padding:"5px 12px", borderRadius:100, border:`1px solid ${filter==="all"&&!filterDay?"#47c4ff":"#2e2e4e"}`, background:filter==="all"&&!filterDay?"rgba(71,196,255,.1)":"transparent", color:filter==="all"&&!filterDay?"#47c4ff":"#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
           Todas ({notes.length})
         </button>
         {NOTE_TAGS.map(t => {
           const count = notes.filter(n => n.tag===t.id).length;
           return (
-            <button key={t.id} onClick={() => setFilter(t.id)} style={{ padding:"5px 12px", borderRadius:100, border:`1px solid ${filter===t.id ? t.color : "#2e2e4e"}`, background:filter===t.id?`rgba(255,255,255,.05)`:"transparent", color:filter===t.id?t.color:"#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+            <button key={t.id} onClick={() => { setFilter(t.id); setFilterDay(""); }} style={{ padding:"5px 12px", borderRadius:100, border:`1px solid ${filter===t.id&&!filterDay ? t.color : "#2e2e4e"}`, background:"transparent", color:filter===t.id&&!filterDay ? t.color : "#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
               {t.emoji} {t.label} ({count})
             </button>
           );
         })}
       </div>
 
-      {/* Notes list */}
-      {notes.length === 0 && (
-        <div style={{ textAlign:"center", padding:"40px 0", color:"#5a5a7a", fontSize:13 }}>Sin notas todavía. ¡Empieza a capturar ideas!</div>
+      {/* Filtro por días vinculados */}
+      {linkedDays.length > 0 && (
+        <div style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto", paddingBottom:2 }}>
+          <span style={{ fontSize:10, color:"#5a5a7a", letterSpacing:1, textTransform:"uppercase", alignSelf:"center", flexShrink:0 }}>📅 Días:</span>
+          {linkedDays.map(d => {
+            const parts = d.split("-");
+            const label = `${parseInt(parts[2])}/${parseInt(parts[1])}`;
+            const count = notes.filter(n => n.linkedDay === d).length;
+            return (
+              <button key={d} onClick={() => { setFilterDay(filterDay===d ? "" : d); setFilter("all"); }} style={{ padding:"4px 10px", borderRadius:100, border:`1px solid ${filterDay===d ? "#47c4ff" : "#2e2e4e"}`, background:filterDay===d ? "rgba(71,196,255,.12)" : "transparent", color:filterDay===d ? "#47c4ff" : "#5a5a7a", fontSize:11, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                {label} ({count})
+              </button>
+            );
+          })}
+        </div>
       )}
+
+      {notes.length === 0 && <div style={{ textAlign:"center", padding:"40px 0", color:"#5a5a7a", fontSize:13 }}>Sin notas todavía.</div>}
+      {filtered.length === 0 && notes.length > 0 && <div style={{ textAlign:"center", padding:"24px 0", color:"#5a5a7a", fontSize:13 }}>Sin notas con ese filtro.</div>}
 
       {pinned.length > 0 && (
-        <div style={{ marginBottom:16 }}>
+        <div style={{ marginBottom:8 }}>
           <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#5a5a7a", marginBottom:8 }}>📌 Fijadas</div>
-          {pinned.map(note => <NoteCard key={note.id} note={note} tags={NOTE_TAGS} onDelete={deleteNote} onPin={togglePin}/>)}
+          {pinned.map(n => <NoteCard key={n.id} note={n} onDelete={deleteNote} onPin={togglePin} onUpdate={updateNote}/>)}
         </div>
       )}
-
-      {unpinned.map(note => <NoteCard key={note.id} note={note} tags={NOTE_TAGS} onDelete={deleteNote} onPin={togglePin}/>)}
+      {unpinned.map(n => <NoteCard key={n.id} note={n} onDelete={deleteNote} onPin={togglePin} onUpdate={updateNote}/>)}
 
       {saving && <div style={{ textAlign:"right", fontSize:10, color:"#47c4ff", letterSpacing:1, marginTop:8 }}>guardando…</div>}
-    </div>
-  );
-}
-
-function NoteCard({ note, tags, onDelete, onPin }) {
-  const tagMeta = tags.find(t => t.id === note.tag) || tags[3];
-  return (
-    <div style={{ padding:"14px 16px", background:"#111118", border:`1px solid ${note.pinned?"rgba(232,255,71,.2)":"#1e1e2e"}`, borderRadius:12, marginBottom:7, position:"relative" }}>
-      <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:14, color:"#c0c0d8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{note.text}</div>
-          <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:8 }}>
-            <span style={{ fontSize:10, padding:"2px 8px", borderRadius:100, border:`1px solid rgba(255,255,255,.1)`, color:tagMeta.color, letterSpacing:.5 }}>{tagMeta.emoji} {tagMeta.label}</span>
-            <span style={{ fontSize:10, color:"#5a5a7a" }}>{note.date}</span>
-          </div>
-        </div>
-        <div style={{ display:"flex", gap:5, flexShrink:0 }}>
-          <button onClick={() => onPin(note.id)} title={note.pinned?"Desfijar":"Fijar"} style={{ width:28, height:28, borderRadius:7, border:`1px solid ${note.pinned?"rgba(232,255,71,.4)":"#2e2e4e"}`, background: note.pinned?"rgba(232,255,71,.1)":"transparent", color:note.pinned?"#e8ff47":"#5a5a7a", cursor:"pointer", fontSize:13 }}>📌</button>
-          <button onClick={() => onDelete(note.id)} style={{ width:28, height:28, borderRadius:7, border:"1px solid rgba(255,107,107,.2)", background:"transparent", color:"#ff6b6b", cursor:"pointer", fontSize:13 }}>✕</button>
-        </div>
-      </div>
     </div>
   );
 }
