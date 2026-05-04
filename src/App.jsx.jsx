@@ -57,6 +57,35 @@ const SCHEDULE = [
 
 const SESSIONS_INITIAL = [
   {
+    id: 2,
+    date: "Mayo 2026",
+    title: "Sesión 2 — Control, sistema y postura",
+    summary: "El foco de esta sesión fue desplazar el objetivo: dejar de buscar jugar en paz y en calma como estado pasivo, y pasar a rendir de forma consciente ejerciendo control activo. La diferencia es sutil pero importante — no se trata de eliminar la tensión, sino de aprender a gestionarla en tiempo real.\n\nEnhamed introdujo el Método Semáforo como herramienta de evaluación de sesiones, y trabajamos varios protocolos nuevos: las miniparadas SIT OUT pactadas como hitos, la postura corporal como regulador fisiológico, y la prohibición de mirar la gráfica.",
+    keyPoints: [
+      "El objetivo no es calma, es control consciente. Asumir desde el principio que van a haber pérdidas de control y momentos difíciles — la clave es cuánto tardas en recuperar el control, no evitar perderlo.",
+      "La gráfica no se mira. No es negociable. Cualquier métrica observada en caliente genera ansiedad y agotamiento anticipado. Se pacta un día fijo a la semana para revisarla. El largo plazo es la única métrica que importa en este deporte.",
+      "En el alto rendimiento no dependemos de las ganas ni del estado de ánimo — dependemos de tener un sistema. Ahora estamos construyendo las bases de ese sistema. Los buenos deportistas no son buenos solo por talento, sino porque tienen un sistema que les funciona."
+    ],
+    commitment: "DEBERES DE LA SEMANA: No mirar la gráfica. Mantener la rutina. Trabajar la sensación de control. Practicar las miniparadas SIT OUT. Respetar la silla — no sentarse en la silla de trabajo si no es para trabajar.",
+    protocols: [
+      { icon:"🪑", title:"Miniparadas SIT OUT pactadas", desc:"A partir de la primera hora de sesión, hacer una parada cada 20-30 minutos. No esperar a sentir tilt — pactarlas como hitos fijos antes de empezar. El objetivo es ejercer control proactivo, no reactivo." },
+      { icon:"🧘", title:"Postura corporal: espalda hacia atrás", desc:"Conscientemente inclinarse hacia el respaldo, no pegarse al monitor. Con el pecho abierto se respira más profundo y bajan las revoluciones. Inclinado hacia delante el cerebro interpreta peligro, el pulmón se comprime y la respiración se vuelve superficial. La postura regula el sistema nervioso." },
+      { icon:"🚦", title:"Método Semáforo", desc:"Rojo: sesión descontrolada, no se ha podido recuperar el control. Amarillo: hubo descontrol pero eventualmente se recuperó el control por momentos. Verde: sesión controlada aunque haya habido momentos puntuales de descontrol. El objetivo es aumentar la sensación de control, no la perfección." },
+      { icon:"📉", title:"Prohibido mirar la gráfica", desc:"No se mira durante la sesión ni entre sesiones. Se pacta un día fijo a la semana para revisarla. Mirar cualquier métrica en caliente genera ansiedad y agota antes. Siempre aumenta la tentación de un mal hábito justo antes de desaparecer — aguantar." },
+      { icon:"🪟", title:"Sin mesas: decisión objetiva", desc:"Si a mitad de sesión no quedan mesas: si no es tarde, puede ser buen momento para estudiar. Si es tarde, mejor parar y descansar o cenar. Por la noche, siempre priorizar el descanso. Con 3 mesas o menos, ser flexible — valoración objetiva, no emocional." },
+      { icon:"🪑", title:"La silla se respeta", desc:"No sentarse en la silla de trabajo si no es para trabajar. Un corredor no usa sus zapatillas buenas para ir al supermercado. La silla es el modo trabajo — sentarse activa el sistema, levantarse lo desactiva. No pasar tiempo en el ordenador el día de descanso." },
+      { icon:"🚫", title:"Sin comparaciones", desc:"Usar el cerebro para compararse con otros es energía que se podría invertir en mejorar. En el alto rendimiento la comparación es un drenaje, no una motivación. El único rival es el sistema de ayer." },
+    ],
+    reflections: [
+      { id:"r2-1", type:"doubt", icon:"🤔", text:"¿Cómo sé cuándo una miniparada SIT OUT es suficiente? ¿Hay una señal concreta de que he 'reseteado' o simplemente vuelvo después del tiempo pactado independientemente de cómo me sienta?", resolved:false },
+      { id:"r2-2", type:"insight", icon:"💡", text:"La postura corporal como regulador fisiológico me parece muy accionable. Es algo que puedo notar en tiempo real — si me estoy inclinando hacia el monitor es una señal de que el nivel de activación ha subido.", resolved:false },
+      { id:"r2-3", type:"doubt", icon:"🤔", text:"El Método Semáforo: ¿lo evalúo al final de cada sesión por separado (tarde y noche) o el día en conjunto? ¿Y dónde queda registrado para que Enhamed pueda verlo?", resolved:false },
+      { id:"r2-4", type:"improvement", icon:"🔧", text:"'Siempre aumenta la tentación de un mal hábito antes de desaparecer' — necesito tener esto muy presente con la gráfica. La primera semana sin mirarla va a ser la más difícil. Necesito un sustituto: ¿qué hago cuando siento el impulso de abrirla?", resolved:false },
+      { id:"r2-5", type:"insight", icon:"💡", text:"La distinción entre buscar calma (pasivo) y ejercer control (activo) cambia completamente el marco mental. No entro a la sesión a 'ver qué pasa', entro a gestionar activamente lo que pase.", resolved:false },
+      { id:"r2-6", type:"doubt", icon:"🤔", text:"El día de descanso semanal — ¿está fijado o es flexible según cómo vaya la semana? ¿Y ese día tampoco se estudia, o solo se descansa del juego?", resolved:false },
+    ],
+  },
+  {
     id: 1,
     date: "Abril 2026",
     title: "Sesión 1 — Bases del rendimiento mental",
@@ -678,14 +707,18 @@ function SessionsPage() {
   useEffect(() => {
     storageGet("sessions_data").then(val => {
       if (!val) { setSessions(SESSIONS_INITIAL); return; }
-      // Merge initial reflections for session 1 if missing
-      const merged = val.map((s, i) => {
-        if (i === 0 && (!s.reflections || s.reflections.length === 0)) {
-          return {...s, reflections: SESSIONS_INITIAL[0].reflections};
+      // Merge: add new sessions from SESSIONS_INITIAL if not in stored data
+      // Also restore reflections if missing
+      const storedIds = val.map(s => s.id);
+      const newSessions = SESSIONS_INITIAL.filter(s => !storedIds.includes(s.id));
+      const merged = val.map(s => {
+        const initial = SESSIONS_INITIAL.find(si => si.id === s.id);
+        if (initial && (!s.reflections || s.reflections.length === 0)) {
+          return {...s, reflections: initial.reflections};
         }
         return s;
       });
-      setSessions(merged);
+      setSessions([...newSessions, ...merged]);
     });
   }, []);
 
