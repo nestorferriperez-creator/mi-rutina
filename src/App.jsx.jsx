@@ -6,27 +6,27 @@ const ICONS = { green:"✅", yellow:"🟡", orange:"🟠", red:"❌" };
 const START = new Date(2026, 3, 24);
 
 const SCHEDULE = [
-  { time:"08:00 — 09:00", emoji:"🌅", title:"Desayuno + Despertar", color:"#e8ff47", tag:"mañana", session:null, tips:[] },
-  { time:"09:00 — 11:00", emoji:"🏋️", title:"Gimnasio + Sauna + Ducha fría", color:"#47ff9a", tag:"salud · 2h", session:null, tips:[] },
-  { time:"11:00 — 13:00", emoji:"📚", title:"Estudio", color:"#47c4ff", tag:"estudio · 2h", session:null,
+  { time:"10:00 — 11:00", emoji:"🌅", title:"Desayuno + Despertar", color:"#e8ff47", tag:"mañana", tips:[] },
+  { time:"11:00 — 13:00", emoji:"🏋️", title:"Gimnasio + Sauna + Ducha fría", color:"#47ff9a", tag:"salud · 2h", tips:[] },
+  { time:"13:00 — 15:00", emoji:"📚", title:"Estudio", color:"#47c4ff", tag:"estudio · 2h",
     tips:[
       { icon:"🎯", label:"Juega con propósito", text:"Si estudias, estudias. Sin móvil, sin juego. Cada bloque es sagrado." },
       { icon:"💪", label:"Músculo de concentración", text:"Cuando la concentración se vaya, vuelve sin castigarte. Se entrena con repetición, no con perfección." },
       { icon:"📋", label:"Revisión de manos", text:"Este es el momento de analizar y celebrar — nunca en caliente durante el juego." },
     ]
   },
-  { time:"13:00 — 14:00", emoji:"🍽️", title:"Comida + Descanso real", color:"#ffb347", tag:"comida", session:null,
+  { time:"15:00 — 16:00", emoji:"🍽️", title:"Comida + Descanso real", color:"#ffb347", tag:"comida",
     tips:[
       { icon:"🚫", label:"Sin mezclar", text:"Si comes, comes. Sin juego ni móvil. Mezclar debilita el músculo de la concentración." },
       { icon:"🔋", label:"Recarga real", text:"El descanso aquí no es negociable — tu cerebro lo necesita para rendir en las sesiones de tarde." },
     ]
   },
-  { time:"14:00 — 16:00", emoji:"😴", title:"Descanso", color:"#c47fff", tag:"descanso · 2h", session:null,
+  { time:"16:00 — 18:00", emoji:"😴", title:"Descanso", color:"#c47fff", tag:"descanso · 2h",
     tips:[
-      { icon:"🍎", label:"Merienda antes de las 16:00", text:"El cerebro necesita glucosa para arrancar. No entres a jugar en vacío — el fallo temprano suele ser fisiológico, no mental." },
+      { icon:"🍎", label:"Merienda antes de las 18:00", text:"El cerebro necesita glucosa para arrancar. No entres a jugar en vacío — el fallo temprano suele ser fisiológico, no mental." },
     ]
   },
-  { time:"16:00 — 19:00", emoji:"🧠", title:"Sesión de Juego", color:"#ff6b6b", tag:"juego · 3h", session:null,
+  { time:"18:00 — 21:00", emoji:"🧠", title:"Sesión de Juego — Tarde", color:"#ff6b6b", tag:"juego · 3h",
     tips:[
       { icon:"🎯", label:"Define un objetivo antes de abrir", text:"Cámbialo respecto a la sesión anterior. Juega con propósito, no en piloto automático." },
       { icon:"🪑", label:"SIT OUT emocional", text:"Emociones negativas → levántate, haz flexiones, bebe agua. La acción física rompe el bucle. No digas 'no voy a pensar' — actúa." },
@@ -34,25 +34,25 @@ const SCHEDULE = [
       { icon:"⚡", label:"Fallo rápido = señal física", text:"¿Has comido? ¿Bebido agua? ¿Descansado? Casi siempre es fisiológico, no mental." },
     ]
   },
-  { time:"19:00 — 20:00", emoji:"🥘", title:"Cena", color:"#ffb347", tag:"comida", session:null,
+  { time:"21:00 — 22:00", emoji:"🥘", title:"Cena", color:"#ffb347", tag:"comida",
     tips:[
       { icon:"🔄", label:"Reset entre sesiones", text:"Si comes, comes. Esta pausa desconecta el juego y te prepara para llegar a la sesión nocturna con la mente más fresca." },
     ]
   },
-  { time:"20:00 — 23:00", emoji:"🧠", title:"Sesión de Juego", color:"#ff6b6b", tag:"juego · 3h", session:null,
+  { time:"22:00 — 01:00", emoji:"🧠", title:"Sesión de Juego — Noche", color:"#ff6b6b", tag:"juego · 3h",
     tips:[
-      { icon:"🌊", label:"Ritual de arranque", text:"No te levantes del sofá y empieces. Lávate la cara, muévete. Engaña al cerebro para que se ponga en modo mañana." },
+      { icon:"🌊", label:"Ritual de arranque", text:"No te levantes del sofá y empieces. Lávate la cara, muévete. Engaña al cerebro para que se ponga en modo noche." },
       { icon:"🎾", label:"Energía Godó", text:"Entra con la alegría e ilusión que sentiste en el Godó. Como algo que disfrutas, no como una obligación." },
       { icon:"🌱", label:"Sin presión de rendimiento", text:"Las primeras semanas el objetivo es instalar el hábito, no rendir al máximo." },
       { icon:"➡️", label:"Mismo protocolo que la tarde", text:"Objetivo definido, SIT OUT si hay emociones, 'vamos a por la siguiente mano' cuando algo salga mal." },
     ]
   },
-  { time:"23:00 — 00:00", emoji:"📵", title:"Desconexión", color:"#a0a0c0", tag:"noche", session:null,
+  { time:"01:00 — 02:00", emoji:"📵", title:"Desconexión", color:"#a0a0c0", tag:"noche",
     tips:[
       { icon:"🚿", label:"Ducha de agua caliente", text:"Ritual de cierre trabajado con Enhamed. Le dice a tu sistema nervioso que el día de juego terminó. Sin esto la mente sigue en modo juego y el sueño se resiente." },
     ]
   },
-  { time:"00:00 — 08:00", emoji:"🌙", title:"Sueño", color:"#6b8cff", tag:"sueño · 8h", session:null, tips:[] },
+  { time:"02:00 — 10:00", emoji:"🌙", title:"Sueño", color:"#6b8cff", tag:"sueño · 8h", tips:[] },
 ];
 
 const SESSIONS_INITIAL = [
