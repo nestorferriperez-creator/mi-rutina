@@ -76,6 +76,35 @@ const SESSIONS_INITIAL = [
       { icon:"🪑", title:"La silla se respeta", desc:"No sentarse en la silla de trabajo si no es para trabajar. Un corredor no usa sus zapatillas buenas para ir al supermercado. La silla es el modo trabajo — sentarse activa el sistema, levantarse lo desactiva. No pasar tiempo en el ordenador el día de descanso." },
       { icon:"🚫", title:"Sin comparaciones", desc:"Usar el cerebro para compararse con otros es energía que se podría invertir en mejorar. En el alto rendimiento la comparación es un drenaje, no una motivación. El único rival es el sistema de ayer." },
     ],
+    followUp: {
+      semaforo: {
+        lunes: "green", martes: "green", miercoles: "yellow", jueves: "green",
+        viernes: "yellow", sabado_s1: "red", sabado_s2: "green", domingo: "green"
+      },
+      deberes: [
+        {
+          titulo: "No mirar la gráfica",
+          estado: "yellow",
+          texto: "Mantenido durante toda la semana, ni siquiera hoy siento la necesidad de mirarla como recompensa. Sin embargo, la cabeza 'juega' a intentar adivinar los resultados — si intuye que va bien se relaja, si intuye que va mal entra en alerta. Sigo siendo esclavo del resultado para tener control mental, aunque ya no mire los números."
+        },
+        {
+          titulo: "Mantener la rutina",
+          estado: "yellow",
+          texto: "Al final de la semana la rutina empezó a temblar. El detonante es siempre nocturno: cuando no me acuesto a la hora, al día siguiente la probabilidad de que se rompa todo sube mucho. Me cuesta cerrar el día — leer, redes, hablar con amigos."
+        },
+        {
+          titulo: "Miniparadas SIT OUT",
+          estado: "yellow",
+          texto: "Las alarmas programadas no han funcionado: cuando sonaban estaba concentrado o tenía mesas buenas. Prefiero hacerlas cuando noto que no estoy concentrado o cuando las mesas están peor. Dato positivo: el tiempo de concentración ha subido de 60 a 90 mins de media, con días de 2h sin desconcentración. El horario estructurado llego a las sesiones con más hambre y más ganas de aplicar lo estudiado."
+        },
+        {
+          titulo: "Postura corporal",
+          estado: "red",
+          texto: "No conseguido interiorizar todavía. Inconscientemente el cuerpo se inclina hacia el monitor y cuesta mantener la espalda en el respaldo."
+        },
+      ],
+      semaforo_detalle: "Sábado S1 ROJA: primera hora y cuarto muy concentrado, pero un error gordo en una mano junto a mala distribución de cartas condiciona toda la sesión — estado de miedo, sin disfrutar. Sábado S2 VERDE: 2h concentrado, influido también por buenos resultados. Miércoles y viernes AMARILLO: la cabeza intuía malos resultados y eso impedía concentrarse, aunque eventualmente se recuperó el control.",
+    },
     reflections: [
       { id:"r2-1", type:"doubt", icon:"🤔", text:"¿Cómo sé cuándo una miniparada SIT OUT es suficiente? ¿Hay una señal concreta de que he 'reseteado' o simplemente vuelvo después del tiempo pactado independientemente de cómo me sienta?", resolved:false },
       { id:"r2-2", type:"insight", icon:"💡", text:"La postura corporal como regulador fisiológico me parece muy accionable. Es algo que puedo notar en tiempo real — si me estoy inclinando hacia el monitor es una señal de que el nivel de activación ha subido.", resolved:false },
@@ -653,6 +682,53 @@ function SessionCard({ session, index, onUpdate }) {
               )}
               {!session.summary && !session.commitment && !session.protocols && (
                 <div style={{ textAlign:"center", padding:"20px 0", color:"#5a5a7a", fontSize:13 }}>Sin rellenar todavía</div>
+              )}
+
+              {/* FOLLOW UP */}
+              {session.followUp && (
+                <div style={{ marginTop:24 }}>
+                  <div style={{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:"#47ff9a", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+                    <span>📋</span> Seguimiento semanal
+                  </div>
+
+                  {/* Semáforo semanal */}
+                  <div style={{ background:"rgba(71,255,154,.04)", border:"1px solid rgba(71,255,154,.15)", borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
+                    <div style={{ fontSize:11, color:"#47ff9a", letterSpacing:1, marginBottom:10 }}>🚦 Semáforo de la semana</div>
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                      {Object.entries(session.followUp.semaforo).map(([dia, val]) => {
+                        const colors = { green:"#47ff9a", yellow:"#ffdc47", red:"#ff6b6b" };
+                        const icons = { green:"🟢", yellow:"🟡", red:"🔴" };
+                        const labels = { lunes:"L", martes:"M", miercoles:"X", jueves:"J", viernes:"V", sabado_s1:"S1", sabado_s2:"S2", domingo:"D" };
+                        return (
+                          <div key={dia} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, padding:"6px 8px", background:"#111118", borderRadius:8, border:`1px solid ${colors[val]}30` }}>
+                            <span style={{ fontSize:14 }}>{icons[val]}</span>
+                            <span style={{ fontSize:9, color:colors[val], letterSpacing:1, textTransform:"uppercase" }}>{labels[dia]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {session.followUp.semaforo_detalle && (
+                      <div style={{ fontSize:12, color:"#8888a8", lineHeight:1.6, marginTop:10, borderTop:"1px solid #1e1e2e", paddingTop:8 }}>{session.followUp.semaforo_detalle}</div>
+                    )}
+                  </div>
+
+                  {/* Deberes */}
+                  <div style={{ fontSize:11, color:"#5a5a7a", letterSpacing:1, marginBottom:8 }}>DEBERES</div>
+                  {session.followUp.deberes.map((d, i) => {
+                    const estadoColor = { green:"#47ff9a", yellow:"#ffdc47", red:"#ff6b6b", orange:"#ffb347" };
+                    const estadoIcon = { green:"✅", yellow:"🟡", red:"❌", orange:"🟠" };
+                    const c = estadoColor[d.estado] || "#a0a0c0";
+                    return (
+                      <div key={i} style={{ padding:"12px 14px", background:"#111118", border:`1px solid #1e1e2e`, borderLeft:`3px solid ${c}`, borderRadius:"0 10px 10px 0", marginBottom:8 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+                          <span style={{ fontSize:14 }}>{estadoIcon[d.estado] || "⚪"}</span>
+                          <span style={{ fontSize:12, fontWeight:600, color:c }}>{d.titulo}</span>
+                        </div>
+                        <div style={{ fontSize:12, color:"#8888a8", lineHeight:1.7 }}>{d.texto}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
 
               {/* REFLECTIONS */}
